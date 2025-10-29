@@ -7,26 +7,12 @@ use crate::lexer::{CoreType, Identifier};
 pub enum TopLevel {
     Definition(Definition),
     Import(ImportStatement),
-    NamespaceModifier(NamespaceModifier),
-    NamespaceDecl(NamespaceDecl),
 }
 
 // Import and namespace management
 #[derive(Debug, Clone)]
 pub struct ImportStatement {
     pub file: Identifier,
-}
-
-#[derive(Debug, Clone)]
-pub enum NamespaceModifier {
-    Open(Identifier),
-    Close(Identifier),
-}
-
-#[derive(Debug, Clone)]
-pub struct NamespaceDecl {
-    pub name: Identifier,
-    pub body: Vec<TopLevel>,
 }
 
 // Definitions

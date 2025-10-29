@@ -4,7 +4,7 @@ This file will be where I keep my syntax definitions
 
 ## Literals
 * Integers: decimal `0`, hex `0xabc`, binary `0b10011`
-* Floats: decimal `3.14`, scientific`1e-9`
+<!-- TODO: * Floats: decimal `3.14`, scientific `1e-9` -->
 * Chars: `'a'`
 * String: `"Hello, world!"`
 * Booleans: `true`, `false`
@@ -89,10 +89,11 @@ This file will be where I keep my syntax definitions
 * Append `++`
 
 ## Casting
-* `(<value>: <type>)`
+* `(<value> : <type>)`
 
 ## Import statements
 * Import library `import <file>`
+<!-- TODO: Reconsider this
 * Namespace opening `open <namespace>`
 * Namespace closing `close <namespace>`
-* enter namespace `namespace <name> {}`
+* enter namespace `namespace <name> {}` -->

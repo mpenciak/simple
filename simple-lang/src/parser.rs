@@ -3,8 +3,8 @@
 use crate::{
     ast::{
         Block, Definition, Expr, FieldDef, FunctionDef, GlobalDef, ImplBlock, ImportStatement,
-        LValue, LetStatement, Literal, NamespaceDecl, NamespaceModifier, Parameter, Statement,
-        StructDef, TopLevel, TypeAlias, TypeExpr,
+        LValue, LetStatement, Literal, Parameter, Statement, StructDef, TopLevel, TypeAlias,
+        TypeExpr,
     },
     errors::{self, parser::Error},
     lexer::{CoreType, Delimiter, Identifier, Keyword, LiteralNumber, Punctuation, Token, Tokens},
@@ -57,8 +57,6 @@ fn parse_top_level(input: Tokens) -> ParseResult<TopLevel> {
     alt((
         parse_definition.map(TopLevel::Definition),
         parse_import.map(TopLevel::Import),
-        parse_namespace_modifier.map(TopLevel::NamespaceModifier),
-        parse_namespace_decl.map(TopLevel::NamespaceDecl),
     ))
     .parse(input)
 }
@@ -409,20 +407,6 @@ fn parse_import(input: Tokens) -> ParseResult<ImportStatement> {
     Ok((input, ImportStatement { file: filename }))
 }
 
-fn parse_namespace_modifier(input: Tokens) -> ParseResult<NamespaceModifier> {
-    let (input, (keyword, identifer)) =
-        (parse_variant!(Keyword), parse_variant!(Identifier)).parse(input)?;
-
-    match keyword {
-        Keyword::Open => Ok((input, NamespaceModifier::Open(identifer))),
-        Keyword::Close => Ok((input, NamespaceModifier::Close(identifer))),
-        _ => Err(NomError(Error::expected_keyword(
-            vec![Keyword::Open, Keyword::Close],
-            keyword,
-        ))),
-    }
-}
-
 // TODO: Finish this
 // ========================= EXPRESSIONS ===============================
 
@@ -645,7 +629,6 @@ fn parse_primary(input: Tokens) -> ParseResult<Expr> {
             }
         }
         Some(Token::Number(_))
-        | Some(Token::Float(_))
         | Some(Token::Char(_))
         | Some(Token::True)
         | Some(Token::False)
@@ -969,7 +952,7 @@ fn parse_loop_expr(input: Tokens) -> ParseResult<Expr> {
 
 fn parse_literal(input: Tokens) -> ParseResult<Literal> {
     match peek_token(input.clone()) {
-        Some(Token::Number(num)) => {
+        Some(Token::Number(_)) => {
             let (rest, tok) = consume_one(input)?;
             if let Token::Number(lit) = tok {
                 let value = match lit {
@@ -978,18 +961,6 @@ fn parse_literal(input: Tokens) -> ParseResult<Literal> {
                     | LiteralNumber::BinInt(v) => v,
                 };
                 Ok((rest, Literal::Integer(value)))
-            } else {
-                unreachable!()
-            }
-        }
-        Some(Token::Float(f)) => {
-            let (rest, tok) = consume_one(input)?;
-            if let Token::Float(fl) = tok {
-                let value = match fl {
-                    crate::lexer::LiteralFloat::Float(v)
-                    | crate::lexer::LiteralFloat::Scientific(v) => v,
-                };
-                Ok((rest, Literal::Float(value)))
             } else {
                 unreachable!()
             }
@@ -1089,27 +1060,6 @@ where
         let (input, _) = expect_delimiter(right)(input)?;
         Ok((input, out))
     }
-}
-
-fn parse_namespace_decl(input: Tokens) -> ParseResult<NamespaceDecl> {
-    let (input, (_, namespace, decls)) = (
-        expect_keywords(vec![Keyword::Namespace]),
-        parse_identifier,
-        surrounded_by(
-            Delimiter::LeftBrace,
-            |tokens| many0(parse_top_level).parse(tokens),
-            Delimiter::RightBrace,
-        ),
-    )
-        .parse(input)?;
-
-    Ok((
-        input,
-        NamespaceDecl {
-            name: namespace,
-            body: decls,
-        },
-    ))
 }
 
 fn parse_identifier(input: Tokens) -> ParseResult<Identifier> {

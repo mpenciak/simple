@@ -12,7 +12,7 @@ This is where I will keep my type system definition, and the syntax for the type
 * Unit: unit
 
 ## Compound types
-* Function types: `(arg1, arg2, ...) -> out`
+* Function types: `fun(arg1, arg2, ...) -> out`
 * Lists: `[<type>]`
 * Tuples: `(part1, part2, ...)`
 * Hashmaps: `{<key>:<value>}`

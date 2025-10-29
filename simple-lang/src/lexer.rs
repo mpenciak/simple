@@ -16,10 +16,6 @@ pub enum Token {
     #[regex(r"[1-9][0-9]*", LiteralNumber::parse_dec)]
     Number(LiteralNumber),
 
-    #[regex(r"[0-9]+\.[0-9]+([eE][+-]?[0-9]+)?", LiteralFloat::parse_float)]
-    #[regex(r"[0-9]+[eE][+-]?[0-9]+", LiteralFloat::parse_scientific)]
-    Float(LiteralFloat),
-
     #[regex(r"'[^'\\]'|'\\.'", |lex| lex.slice().chars().nth(1))]
     Char(char),
 
@@ -58,14 +54,14 @@ pub enum Token {
         r"(?x)
         type|mut|const|for|in|while|continue|break|if|
         let|elif|else|def|return|struct|impl|import|
-        open|close|namespace|global|fun|List|Tuple|Map",
+        global|fun|List|Tuple|Map",
         Keyword::parse
     )]
     Keyword(Keyword),
 
     #[regex(
         r"(?x)
-        u8|u16|u32|u64|i8|i16|i32|i64|Float|Bool|String|Char|Unit
+        u8|u16|u32|u64|i8|i16|i32|i64|Bool|String|Char|Unit
         ",
         CoreType::parse
     )]
@@ -74,11 +70,6 @@ pub enum Token {
     // Identifiers
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice().to_string())]
     Identifier(Identifier),
-
-    // NOTE: currently we filter out comments at the lexer level
-    // // Comment
-    // #[regex(r"//[^\n]*\n?", |lex| lex.slice().to_string())]
-    // LineComment(String),
 
     // Unary Operators
     #[regex(r"-|!", UnaryOperator::parse, priority = 3)]
@@ -111,30 +102,6 @@ impl LiteralNumber {
 
     fn parse_bin(lex: &mut Lexer<Token>) -> Option<Self> {
         lex.slice().parse::<i64>().ok().map(LiteralNumber::BinInt)
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum LiteralFloat {
-    Float(f64),
-    Scientific(f64),
-}
-
-impl LiteralFloat {
-    fn parse_float(lex: &mut Lexer<Token>) -> Option<Self> {
-        if let Ok(value) = lex.slice().parse::<f64>() {
-            Some(LiteralFloat::Float(value))
-        } else {
-            None
-        }
-    }
-
-    fn parse_scientific(lex: &mut Lexer<Token>) -> Option<Self> {
-        if let Ok(value) = lex.slice().parse::<f64>() {
-            Some(LiteralFloat::Scientific(value))
-        } else {
-            None
-        }
     }
 }
 
@@ -205,9 +172,6 @@ pub enum Keyword {
     Struct,
     Impl,
     Import,
-    Open,
-    Close,
-    Namespace,
     Global,
     Fun,
     List,
@@ -235,9 +199,6 @@ impl Keyword {
             "struct" => Some(Keyword::Struct),
             "impl" => Some(Keyword::Impl),
             "import" => Some(Keyword::Import),
-            "open" => Some(Keyword::Open),
-            "close" => Some(Keyword::Close),
-            "namespace" => Some(Keyword::Namespace),
             "global" => Some(Keyword::Global),
             "fun" => Some(Keyword::Fun),
             "List" => Some(Keyword::List),
@@ -259,7 +220,6 @@ pub enum CoreType {
     I16,
     I32,
     I64,
-    Fp,
     Bool,
     Str,
     Char,
@@ -277,7 +237,6 @@ impl CoreType {
             "i16" => Some(Self::I16),
             "i32" => Some(Self::I32),
             "i64" => Some(Self::I64),
-            "Float" => Some(Self::Fp),
             "Bool" => Some(Self::Bool),
             "String" => Some(Self::Str),
             "Char" => Some(Self::Char),
