@@ -42,7 +42,7 @@ pub enum Token {
     Assign,
 
     // Delimiters
-    #[regex(r"(|)|\{|\}|[|]", Delimiter::parse)]
+    #[regex(r"\(|\)|\{|\}|\[|\]", Delimiter::parse)]
     Delimiter(Delimiter),
 
     // Punctuation
@@ -379,20 +379,56 @@ impl<'a> Input for Tokens<'a> {
 mod tests {
     use super::*;
 
+    macro_rules! assert_token_eq {
+        ($lex:ident, $tok_type:expr) => {
+            assert_eq!($lex.next(), Some(Ok($tok_type)))
+        };
+        ($lex:ident, $tok_type:expr, $data:expr) => {
+            assert_eq!($lex.next(), Some(Ok($tok_type($data))))
+        };
+    }
+
     #[test]
-    fn test_lexer() {
+    fn test_let_binding() {
         let mut lexer = Lexer::new("let x = 5;");
 
-        assert_eq!(lexer.next(), Some(Ok(Token::Keyword(Keyword::Let))));
-        assert_eq!(lexer.next(), Some(Ok(Token::Identifier("x".to_string()))));
-        assert_eq!(lexer.next(), Some(Ok(Token::Assign)));
-        assert_eq!(
-            lexer.next(),
-            Some(Ok(Token::Number(LiteralNumber::DecInt(5))))
+        assert_token_eq!(lexer, Token::Keyword, Keyword::Let);
+        assert_token_eq!(lexer, Token::Identifier, "x".to_string());
+        assert_token_eq!(lexer, Token::Assign);
+        assert_token_eq!(lexer, Token::Number, LiteralNumber::DecInt(5));
+        assert_token_eq!(lexer, Token::Punctuation, Punctuation::Semicolon);
+    }
+
+    #[test]
+    fn test_function_def() {
+        let mut lexer = Lexer::new(
+            r#"
+// This should be ignored
+def test(n : u64) -> u64 {
+  // So should this
+  return n + 1;
+}
+        "#,
         );
-        assert_eq!(
-            lexer.next(),
-            Some(Ok(Token::Punctuation(Punctuation::Semicolon)))
-        );
+
+        assert_token_eq!(lexer, Token::Keyword, Keyword::Def);
+        assert_token_eq!(lexer, Token::Identifier, "test".to_string());
+        assert_token_eq!(lexer, Token::Delimiter, Delimiter::LeftParen);
+        assert_token_eq!(lexer, Token::Identifier, "n".to_string());
+        assert_token_eq!(lexer, Token::Punctuation, Punctuation::Colon);
+        assert_token_eq!(lexer, Token::TypeWord, CoreType::U64);
+        assert_token_eq!(lexer, Token::Delimiter, Delimiter::RightParen);
+        assert_token_eq!(lexer, Token::Punctuation, Punctuation::Arrow);
+        assert_token_eq!(lexer, Token::TypeWord, CoreType::U64);
+        assert_token_eq!(lexer, Token::Delimiter, Delimiter::LeftBrace);
+
+        assert_token_eq!(lexer, Token::Keyword, Keyword::Return);
+        assert_token_eq!(lexer, Token::Identifier, "n".to_string());
+        assert_token_eq!(lexer, Token::BinaryOp, BinaryOperator::Add);
+        assert_token_eq!(lexer, Token::Number, LiteralNumber::DecInt(1));
+        assert_token_eq!(lexer, Token::Punctuation, Punctuation::Semicolon);
+
+        assert_token_eq!(lexer, Token::Delimiter, Delimiter::RightBrace);
+        assert_eq!(lexer.next(), None);
     }
 }
