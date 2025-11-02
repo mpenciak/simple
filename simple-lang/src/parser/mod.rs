@@ -1,24 +1,10 @@
 //! Here we define the parser
 
 use crate::{
-    ast::{
-        Block, Definition, Expr, FieldDef, FunctionDef, GlobalDef, ImplBlock, ImportStatement,
-        LValue, LetStatement, Literal, Parameter, Statement, StructDef, TopLevel, TypeAlias,
-        TypeExpr,
-    },
     errors::{self, parser::Error},
-    lexer::{CoreType, Delimiter, Identifier, Keyword, LiteralNumber, Punctuation, Token, Tokens},
-    parser::types::parse_type_expr,
+    lexer::{CoreType, Delimiter, Identifier, Keyword, Punctuation, Token, Tokens},
 };
-use nom::{
-    self,
-    branch::alt,
-    combinator::{all_consuming, opt},
-    multi::{many0, separated_list0},
-    sequence::preceded,
-    Err::Error as NomError,
-    IResult, Input, Parser,
-};
+use nom::{self, Err::Error as NomError, IResult, Input, Parser};
 
 pub mod command;
 pub mod expr;
@@ -56,11 +42,6 @@ macro_rules! parse_variant {
 }
 
 pub(crate) use parse_variant;
-
-// TODO: Finish this
-// ========================= EXPRESSIONS ===============================
-
-// ========================= LOW LEVEL TOKEN HELPERS ===================
 
 fn peek_token(input: Tokens) -> Option<Token> {
     input.iter_elements().next()

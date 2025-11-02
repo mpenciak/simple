@@ -1,7 +1,9 @@
 use crate::{
-    ast::{Block, Expr, Literal, Parameter},
+    ast::{self, Block, Comparison, Expr, Literal, Parameter},
     errors::parser::Error,
-    lexer::{Delimiter, Keyword, LiteralNumber, Punctuation, Token, Tokens},
+    lexer::{
+        self, ComparisonOperator, Delimiter, Keyword, LiteralNumber, Punctuation, Token, Tokens,
+    },
     parser::{
         consume_expected_delimiter, consume_expected_punctuation, consume_identifier, consume_one,
         expect_keywords, peek_token, statement::parse_statement, types::parse_type_expr,
@@ -26,7 +28,7 @@ fn parse_or_expr(input: Tokens) -> ParseResult<Expr> {
             if matches!(binop, crate::lexer::BinaryOperator::Or) {
                 let (after_op, _) = consume_one(rest)?;
                 let (after_rhs, rhs) = parse_and_expr(after_op)?;
-                lhs = Expr::BinaryOp(crate::ast::BinaryOperator::Or, Box::new(lhs), Box::new(rhs));
+                lhs = Expr::BinaryOp(ast::BinaryOperator::Or, Box::new(lhs), Box::new(rhs));
                 rest = after_rhs;
                 continue;
             }
@@ -43,11 +45,7 @@ fn parse_and_expr(input: Tokens) -> ParseResult<Expr> {
             if matches!(binop, crate::lexer::BinaryOperator::And) {
                 let (after_op, _) = consume_one(rest)?;
                 let (after_rhs, rhs) = parse_comparison_expr(after_op)?;
-                lhs = Expr::BinaryOp(
-                    crate::ast::BinaryOperator::And,
-                    Box::new(lhs),
-                    Box::new(rhs),
-                );
+                lhs = Expr::BinaryOp(ast::BinaryOperator::And, Box::new(lhs), Box::new(rhs));
                 rest = after_rhs;
                 continue;
             }
@@ -63,12 +61,12 @@ fn parse_comparison_expr(input: Tokens) -> ParseResult<Expr> {
         let (after_op, _) = consume_one(rest)?;
         let (after_rhs, rhs) = parse_add_expr(after_op)?;
         let cmp_ast = match cmp {
-            crate::lexer::ComparisonOperator::Eq => crate::ast::Comparison::Eq,
-            crate::lexer::ComparisonOperator::Ne => crate::ast::Comparison::Ne,
-            crate::lexer::ComparisonOperator::Lt => crate::ast::Comparison::Lt,
-            crate::lexer::ComparisonOperator::Le => crate::ast::Comparison::Le,
-            crate::lexer::ComparisonOperator::Gt => crate::ast::Comparison::Gt,
-            crate::lexer::ComparisonOperator::Ge => crate::ast::Comparison::Ge,
+            ComparisonOperator::Eq => Comparison::Eq,
+            ComparisonOperator::Ne => Comparison::Ne,
+            ComparisonOperator::Lt => Comparison::Lt,
+            ComparisonOperator::Le => Comparison::Le,
+            ComparisonOperator::Gt => Comparison::Gt,
+            ComparisonOperator::Ge => Comparison::Ge,
         };
         lhs = Expr::Comparison(cmp_ast, Box::new(lhs), Box::new(rhs));
         rest = after_rhs;
@@ -80,21 +78,15 @@ fn parse_add_expr(input: Tokens) -> ParseResult<Expr> {
     let (mut rest, mut lhs) = parse_mul_expr(input)?;
     loop {
         match peek_token(rest.clone()) {
-            Some(Token::BinaryOp(op @ crate::lexer::BinaryOperator::Add))
-            | Some(Token::BinaryOp(op @ crate::lexer::BinaryOperator::Sub))
-            | Some(Token::BinaryOp(op @ crate::lexer::BinaryOperator::Append)) => {
+            Some(Token::BinaryOp(_op @ lexer::BinaryOperator::Add))
+            | Some(Token::BinaryOp(_op @ lexer::BinaryOperator::Sub))
+            | Some(Token::BinaryOp(_op @ lexer::BinaryOperator::Append)) => {
                 let (after_op, token) = consume_one(rest)?;
                 let (after_rhs, rhs) = parse_mul_expr(after_op)?;
                 let op = match token {
-                    Token::BinaryOp(crate::lexer::BinaryOperator::Add) => {
-                        crate::ast::BinaryOperator::Add
-                    }
-                    Token::BinaryOp(crate::lexer::BinaryOperator::Sub) => {
-                        crate::ast::BinaryOperator::Sub
-                    }
-                    Token::BinaryOp(crate::lexer::BinaryOperator::Append) => {
-                        crate::ast::BinaryOperator::Append
-                    }
+                    Token::BinaryOp(lexer::BinaryOperator::Add) => ast::BinaryOperator::Add,
+                    Token::BinaryOp(lexer::BinaryOperator::Sub) => ast::BinaryOperator::Sub,
+                    Token::BinaryOp(lexer::BinaryOperator::Append) => ast::BinaryOperator::Append,
                     _ => unreachable!(),
                 };
                 lhs = Expr::BinaryOp(op, Box::new(lhs), Box::new(rhs));
@@ -110,17 +102,13 @@ fn parse_mul_expr(input: Tokens) -> ParseResult<Expr> {
     let (mut rest, mut lhs) = parse_unary_expr(input)?;
     loop {
         match peek_token(rest.clone()) {
-            Some(Token::BinaryOp(crate::lexer::BinaryOperator::Mul))
-            | Some(Token::BinaryOp(crate::lexer::BinaryOperator::Div)) => {
+            Some(Token::BinaryOp(lexer::BinaryOperator::Mul))
+            | Some(Token::BinaryOp(lexer::BinaryOperator::Div)) => {
                 let (after_op, token) = consume_one(rest)?;
                 let (after_rhs, rhs) = parse_unary_expr(after_op)?;
                 let op = match token {
-                    Token::BinaryOp(crate::lexer::BinaryOperator::Mul) => {
-                        crate::ast::BinaryOperator::Mul
-                    }
-                    Token::BinaryOp(crate::lexer::BinaryOperator::Div) => {
-                        crate::ast::BinaryOperator::Div
-                    }
+                    Token::BinaryOp(lexer::BinaryOperator::Mul) => ast::BinaryOperator::Mul,
+                    Token::BinaryOp(lexer::BinaryOperator::Div) => ast::BinaryOperator::Div,
                     _ => unreachable!(),
                 };
                 lhs = Expr::BinaryOp(op, Box::new(lhs), Box::new(rhs));
@@ -134,14 +122,12 @@ fn parse_mul_expr(input: Tokens) -> ParseResult<Expr> {
 
 fn parse_unary_expr(input: Tokens) -> ParseResult<Expr> {
     match peek_token(input.clone()) {
-        Some(Token::UnaryOp(op)) => {
+        Some(Token::UnaryOp(_op)) => {
             let (rest, token) = consume_one(input)?;
             let (rest, expr) = parse_unary_expr(rest)?; // allow chaining
             let uop = match token {
-                Token::UnaryOp(crate::lexer::UnaryOperator::Negative) => {
-                    crate::ast::UnaryOperator::Neg
-                }
-                Token::UnaryOp(crate::lexer::UnaryOperator::Not) => crate::ast::UnaryOperator::Not,
+                Token::UnaryOp(lexer::UnaryOperator::Negative) => ast::UnaryOperator::Neg,
+                Token::UnaryOp(lexer::UnaryOperator::Not) => ast::UnaryOperator::Not,
                 _ => unreachable!(),
             };
             Ok((rest, Expr::UnaryOp(uop, Box::new(expr))))
@@ -164,7 +150,7 @@ fn parse_postfix_expr(input: Tokens) -> ParseResult<Expr> {
             Some(Token::Punctuation(Punctuation::Dot)) => {
                 let (after_dot, _) = consume_one(rest)?;
                 // expect identifier
-                if let Some(Token::Identifier(name)) = peek_token(after_dot.clone()) {
+                if let Some(Token::Identifier(_name)) = peek_token(after_dot.clone()) {
                     let (after_ident, ident_token) = consume_one(after_dot)?;
                     let ident = match ident_token {
                         Token::Identifier(s) => s,
@@ -436,7 +422,7 @@ fn parse_lambda_expr(input: Tokens) -> ParseResult<Expr> {
     if let Expr::Block(body_block) = body_expr {
         Ok((
             after_body,
-            Expr::Lambda(crate::ast::LambdaExpr {
+            Expr::Lambda(ast::LambdaExpr {
                 params,
                 body: body_block,
             }),
@@ -492,7 +478,7 @@ fn parse_if_expr(input: Tokens) -> ParseResult<Expr> {
     }
     Ok((
         cur,
-        Expr::If(crate::ast::IfExpr {
+        Expr::If(ast::IfExpr {
             condition: Box::new(cond),
             then_block,
             elif_branches: elifs,
@@ -516,7 +502,7 @@ fn parse_loop_expr(input: Tokens) -> ParseResult<Expr> {
             };
             Ok((
                 rest,
-                Expr::Loop(crate::ast::LoopExpr::While {
+                Expr::Loop(ast::LoopExpr::While {
                     condition: Box::new(cond),
                     body,
                 }),
@@ -540,7 +526,7 @@ fn parse_loop_expr(input: Tokens) -> ParseResult<Expr> {
             };
             Ok((
                 rest,
-                Expr::Loop(crate::ast::LoopExpr::For {
+                Expr::Loop(ast::LoopExpr::For {
                     var,
                     iterable: Box::new(iterable),
                     body,
